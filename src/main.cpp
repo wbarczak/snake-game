@@ -15,8 +15,13 @@ struct GameState
 
 };
 
+enum class MoveResult
+{
+	ok, fruit, fail
+};
+
 GameState initGameState();
-bool move(std::list<Vector2>& body, Direction dir, Vector2& fruit, Vector2 boardDimensions);
+MoveResult move(std::list<Vector2>& body, Direction dir, Vector2& fruit, Vector2 boardDimensions);
 Vector2 newFruit(const std::list<Vector2>& body, Vector2 boardDimensions);
 
 //todo: buffer inputs
@@ -24,10 +29,10 @@ Vector2 newFruit(const std::list<Vector2>& body, Vector2 boardDimensions);
 int main()
 {
 	srand(time(0));
-	const int w = 400, h = w;
+	const int w = 720, h = w;
 
 	// move all that into game state struct and make r actually reset the game
-	std::list<Vector2> body = { {0,0}, {0,1}, {0,2} };
+	std::list<Vector2> body = { {4,5}, {3,5}, {2,5} };
 	Direction movementDirection = Direction::right;
 	Direction lastMove = movementDirection;
 	Vector2 boardDimensions{10, 10};
@@ -35,8 +40,13 @@ int main()
 	bool gameRunning = true;
 	GameState state = initGameState();
 
-	InitWindow(w, h, "Test circle");
+	InitWindow(w, h, "Snake Game");
 	SetTargetFPS(60);
+	InitAudioDevice();
+
+	Sound pickup = LoadSound("fruit_pickup.wav");
+	Sound gameOver = LoadSound("game_over.wav");
+	Sound movement = LoadSound("movement.wav");
 	const int delay = 10;
 	int counter = 0;
 
@@ -51,7 +61,35 @@ int main()
 		counter = (counter + 1) % delay;
 		if (counter == 0 && gameRunning)
 		{
-			gameRunning = move(body, movementDirection, fruit, boardDimensions);
+			MoveResult result = move(body, movementDirection, fruit, boardDimensions);
+			gameRunning = result != MoveResult::fail;
+
+			if (result == MoveResult::fruit)
+			{
+				float pitch = (rand() % 20 + 90) / 100.0f;
+				float volume = (rand() % 20 + 80) / 100.0f;
+				float pan = (rand() & 20 - 10) / 100.0f;
+				SetSoundPitch(pickup, pitch);
+				SetSoundVolume(pickup, volume);
+				SetSoundPan(pickup, pan);
+				PlaySound(pickup);
+			}
+			else if (result == MoveResult::fail)
+			{
+				PlaySound(gameOver);
+			}
+			
+			if (!IsSoundPlaying(movement))
+			{
+				float pitch = (rand() % 20 + 90) / 100.0f;
+				float volume = (rand() % 20 + 50) / 100.0f;
+				float pan = (rand() & 20 - 10) / 100.0f;
+				SetSoundPitch(movement, pitch);
+				SetSoundVolume(movement, volume);
+				SetSoundPan(movement, pan);
+				PlaySound(movement);
+			}
+
 			lastMove = movementDirection;
 		}
 
@@ -79,16 +117,16 @@ int main()
 			RED
 		);
 
-		DrawText(std::to_string(body.size() - 3).c_str(), 0, 0, 20, WHITE);
+		DrawText(std::to_string(body.size() - 3).c_str(), 0, 0, w / 20, WHITE);
 
 		if (!gameRunning)
 		{
 			std::string gameOver = "Game Over!";
-			float fontSize = 40;
+			float fontSize = w / 10;
 			DrawText(
 				gameOver.c_str(),
 				w / 2 - MeasureText(gameOver.c_str(), fontSize) / 2,
-				h / 2 - 40,
+				h / 2 - fontSize,
 				fontSize,
 				WHITE
 			);
@@ -97,6 +135,8 @@ int main()
 		EndDrawing();
 	}
 
+	UnloadSound(pickup);
+	CloseAudioDevice();
 	CloseWindow();
 }
 
@@ -105,7 +145,7 @@ GameState initGameState()
 	return {};
 }
 
-bool move(std::list<Vector2>& body, Direction dir, Vector2& fruit, Vector2 boardDimensions)
+MoveResult move(std::list<Vector2>& body, Direction dir, Vector2& fruit, Vector2 boardDimensions)
 {
 	Vector2 newPosition = body.front();
 	switch (dir)
@@ -131,7 +171,7 @@ bool move(std::list<Vector2>& body, Direction dir, Vector2& fruit, Vector2 board
 	{
 		if ((pos.x == newPosition.x && pos.y == newPosition.y) && &pos != &body.front())
 		{
-			return false;
+			return MoveResult::fail;
 		}
 	}
 
@@ -139,7 +179,11 @@ bool move(std::list<Vector2>& body, Direction dir, Vector2& fruit, Vector2 board
 	{
 		body.pop_back();
 	}
-	return true;
+	else
+	{
+		return MoveResult::fruit;
+	}
+	return MoveResult::ok;
 }
 
 Vector2 newFruit(const std::list<Vector2>& body, Vector2 boardDimensions)
