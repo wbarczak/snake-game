@@ -2,26 +2,30 @@
 
 #include <stdint.h>
 #include <list>
+#include <deque>
 
 class Game
 {
 public:
 
-	Game() : m_fruit(randomFruit())
+	static constexpr int32_t baseWidthHeight = 10;
+
+	Game(int32_t width = baseWidthHeight, int32_t height = baseWidthHeight, Color snakeColor = GREEN) :
+		m_boardDimensions{width, height},
+		m_snakeColor(snakeColor)
 	{
+		m_fruit = randomFruit();
 	}
 
 	~Game()
 	{
-		UnloadSound(m_pickup);
-		UnloadSound(m_gameOver);
 	}
 
 	bool running() { return m_lastMoveResult != MoveResult::no_op; }
 	
 	void input();
 	void tick();
-	void sound();
+	void sound(Sound pickup, Sound gameOver);
 	void draw();
 
 private:
@@ -33,13 +37,13 @@ private:
 
 	Fruit randomFruit();
 	Position applyDirection(Position position, Direction direction);
+	bool previousInputIsOpposite(Direction direction);
 
-	static constexpr Position m_boardDimensions{10, 10};
-	Sound m_pickup = LoadSound("fruit_pickup.wav");
-	Sound m_gameOver = LoadSound("game_over.wav");
-	std::list<Position> m_body{{4, 5}, {3, 5}, {2, 5}};
-	Fruit m_fruit{};
-	Direction m_direction = Direction::right;
-	Direction m_lastDirection = m_direction;
+	std::deque<Direction> m_inputs{Direction::right};
+	std::list<Position> m_body{{2, 0}, {1, 0}, {0, 0}};
+	Fruit m_fruit{{-1, -1}, true};
+	Position m_boardDimensions{ 10, 10 };
+	Direction m_currentDirection = Direction::right;
+	Color m_snakeColor = GREEN;
 	MoveResult m_lastMoveResult = MoveResult::ok;
 };

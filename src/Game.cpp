@@ -6,13 +6,32 @@
 
 void Game::input()
 {
-	if (IsKeyPressed(KEY_W) && m_lastDirection != Direction::down) m_direction = Direction::up;
-	if (IsKeyPressed(KEY_S) && m_lastDirection != Direction::up) m_direction = Direction::down;
-	if (IsKeyPressed(KEY_A) && m_lastDirection != Direction::right) m_direction = Direction::left;
-	if (IsKeyPressed(KEY_D) && m_lastDirection != Direction::left) m_direction = Direction::right;
+	if (m_inputs.size() >= 2) return;
+
+	bool up = IsKeyPressed(KEY_W) || IsKeyPressed(KEY_UP);
+	bool down = IsKeyPressed(KEY_S) || IsKeyPressed(KEY_DOWN);
+	bool left = IsKeyPressed(KEY_A) || IsKeyPressed(KEY_LEFT);
+	bool right = IsKeyPressed(KEY_D) || IsKeyPressed(KEY_RIGHT);
+
+	if (up && !previousInputIsOpposite(Direction::up))
+	{
+		m_inputs.push_back(Direction::up);
+	}
+	if (down && !previousInputIsOpposite(Direction::down))
+	{
+		m_inputs.push_back(Direction::down);
+	}
+	if (left && !previousInputIsOpposite(Direction::left))
+	{
+		m_inputs.push_back(Direction::left);
+	}
+	if (right && !previousInputIsOpposite(Direction::right))
+	{
+		m_inputs.push_back(Direction::right);
+	}
 }
 
-void Game::tick()//snake should move after all the checks and fruit generations are performad cuz otherwise there are bugs
+void Game::tick()
 {
 	if (m_lastMoveResult == MoveResult::fail)
 	{
@@ -20,39 +39,46 @@ void Game::tick()//snake should move after all the checks and fruit generations 
 		return;
 	}
 
-	Position headPosition = applyDirection(m_body.front(), m_direction);
+	m_lastMoveResult = MoveResult::ok;
+
+	if (!m_inputs.empty())
+	{
+		m_currentDirection = m_inputs.front();
+		m_inputs.pop_front();
+	}
+	Position headPosition = applyDirection(m_body.front(), m_currentDirection);
 
 	bool foundFruit = m_fruit.exists && headPosition.x == m_fruit.pos.x && headPosition.y == m_fruit.pos.y;
-
-	m_body.push_front(headPosition);
 
 	if (foundFruit)
 	{
 		m_fruit = randomFruit();
-		m_lastMoveResult = MoveResult::fruit;
-	}
-	else
-	{
-		m_body.pop_back();
-		m_lastMoveResult = MoveResult::ok;
-	}
+		m_body.push_front(headPosition);
 
-	if (m_body.size() >= m_boardDimensions.x * m_boardDimensions.y)
-	{
-		m_lastMoveResult = MoveResult::fail;
+		if (m_body.size() >= m_boardDimensions.x * m_boardDimensions.y)
+		{
+			m_lastMoveResult = MoveResult::fail;
+			return;
+		}
+
+		m_lastMoveResult = MoveResult::fruit;
+		return;
 	}
 
 	for (auto& pos : m_body)
 	{
-		if ((pos.x == headPosition.x && pos.y == headPosition.y) && &pos != &m_body.front())
+		if ((pos.x == headPosition.x && pos.y == headPosition.y) && &pos != &m_body.back())
 		{
 			m_lastMoveResult = MoveResult::fail;
 			return;
 		}
 	}
+
+	m_body.push_front(headPosition);
+	m_body.pop_back();
 }
 
-void Game::sound()
+void Game::sound(Sound pickup, Sound gameOver)
 {
 	switch (m_lastMoveResult)
 	{
@@ -62,16 +88,16 @@ void Game::sound()
 		float pitch = (rand() % 20 + 90) / 100.0f;
 		float volume = (rand() % 20 + 80) / 100.0f;
 		float pan = (rand() & 20 - 10) / 100.0f;
-		SetSoundPitch(m_pickup, pitch);
-		SetSoundVolume(m_pickup, volume);
-		SetSoundPan(m_pickup, pan);
-		PlaySound(m_pickup);
+		SetSoundPitch(pickup, pitch);
+		SetSoundVolume(pickup, volume);
+		SetSoundPan(pickup, pan);
+		PlaySound(pickup);
 	}
 	break;
 
 	case MoveResult::fail:
 
-		PlaySound(m_gameOver);
+		PlaySound(gameOver);
 		break;
 
 	};
@@ -84,7 +110,7 @@ void Game::draw()
 		GetRenderHeight() / m_boardDimensions.y
 	};
 
-	Color partColor{ 0, 255, 0, 255 };
+	Color partColor = m_snakeColor;
 	for (auto [x, y] : m_body)
 	{
 		DrawRectangle(
@@ -94,7 +120,7 @@ void Game::draw()
 			tileDim.y,
 			partColor
 		);
-		partColor.g -= 2;
+		partColor.a -= 2;
 	}
 
 	if (m_fruit.exists)
@@ -129,7 +155,7 @@ Game::Fruit Game::randomFruit()
 	Position out{};
 	bool good = false;
 
-	if (m_body.size() == m_boardDimensions.x * m_boardDimensions.y)
+	if (m_body.size() >= m_boardDimensions.x * m_boardDimensions.y - 1)
 	{
 		return Fruit{{}, false};
 	}
@@ -139,6 +165,11 @@ Game::Fruit Game::randomFruit()
 		out = {rand() % m_boardDimensions.x, rand() % m_boardDimensions.y};
 
 		good = true;
+		if (m_fruit.pos.x == out.x && m_fruit.pos.y == out.y)
+		{
+			good = false;
+			continue;
+		}
 		for (auto pos : m_body)
 		{
 			if (pos.x == out.x && pos.y == out.y)
@@ -154,8 +185,6 @@ Game::Fruit Game::randomFruit()
 
 Game::Position Game::applyDirection(Position position, Direction direction)
 {
-	m_lastDirection = direction;
-
 	switch (direction)
 	{
 	case Direction::up: position.y -= 1; break;
@@ -168,4 +197,14 @@ Game::Position Game::applyDirection(Position position, Direction direction)
 	position.y = (position.y + m_boardDimensions.y) % m_boardDimensions.y;
 
 	return position;
+}
+
+bool Game::previousInputIsOpposite(Direction direction)
+{
+	Direction previousInput = m_inputs.empty()? m_currentDirection : m_inputs.back();
+	
+	return (previousInput == Direction::up && direction == Direction::down) ||
+		(previousInput == Direction::down && direction == Direction::up) ||
+		(previousInput == Direction::left && direction == Direction::right) ||
+		(previousInput == Direction::right && direction == Direction::left);
 }
