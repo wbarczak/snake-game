@@ -4,6 +4,8 @@
 #include <list>
 #include <deque>
 
+#include "Global.hpp"
+
 class Game
 {
 public:
@@ -25,7 +27,7 @@ public:
 	
 	void input();
 	void tick();
-	void sound(Sound pickup, Sound gameOver);
+	void sound();
 	void draw();
 
 private:

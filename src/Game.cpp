@@ -78,7 +78,7 @@ void Game::tick()
 	m_body.pop_back();
 }
 
-void Game::sound(Sound pickup, Sound gameOver)
+void Game::sound()
 {
 	switch (m_lastMoveResult)
 	{
@@ -88,16 +88,16 @@ void Game::sound(Sound pickup, Sound gameOver)
 		float pitch = (rand() % 20 + 90) / 100.0f;
 		float volume = (rand() % 20 + 80) / 100.0f;
 		float pan = (rand() & 20 - 10) / 100.0f;
-		SetSoundPitch(pickup, pitch);
-		SetSoundVolume(pickup, volume);
-		SetSoundPan(pickup, pan);
-		PlaySound(pickup);
+		SetSoundPitch(Global::pickup, pitch);
+		SetSoundVolume(Global::pickup, volume);
+		SetSoundPan(Global::pickup, pan);
+		PlaySound(Global::pickup);
 	}
 	break;
 
 	case MoveResult::fail:
 
-		PlaySound(gameOver);
+		PlaySound(Global::gameOver);
 		break;
 
 	};

@@ -1,51 +1,59 @@
 #include <stdlib.h>
 #include <time.h>
+#include <memory>
+#include <functional>
+#include <stack>
 
 #include "raylib.h"
+#include "raygui.h"
 
-#include "Game.hpp"
+#include "Screens.hpp"
 
-int main()
+int32_t main()
 {
-	srand(time(0));
-	const int32_t w = 720, h = w;
-	const int32_t boardW = 10, boardH = boardW;
-	const int delay = 10;
+	std::unique_ptr<Screen>(*factory[ScreenType::COUNT])();
+	factory[ScreenType::home] = []() -> std::unique_ptr<Screen> { return std::make_unique<ScreenHome>(); };
+	factory[ScreenType::settings] = []() -> std::unique_ptr<Screen> { return std::make_unique<ScreenSettings>(); };
+	factory[ScreenType::game] = []() -> std::unique_ptr<Screen> { return std::make_unique<ScreenGame>(); };
 
-	InitWindow(w, h, "Snake Game");
+	std::unique_ptr<Screen> screen = factory[ScreenType::home]();
+
+	srand(time(0));
+	const int32_t k_width = 720, k_height = k_width;
+
+	InitWindow(k_width, k_height, "Snake Game");
 	SetTargetFPS(60);
 	InitAudioDevice();
 
-	constexpr Color k_snakeColor = PURPLE;
+	GuiLoadStyle("style_cyber.rgs");
+	GuiSetStyle(DEFAULT, TEXT_SIZE, GetRenderHeight() / 20);
 
-	Sound pickup = LoadSound("fruit_pickup.wav");
-	Sound gameOver = LoadSound("game_over.wav");
-	Game game(boardW, boardH, k_snakeColor);
-
-	int counter = 0;
+	Global::pickup = LoadSound("fruit_pickup.wav");
+	Global::gameOver = LoadSound("game_over.wav");
 
 	while (!WindowShouldClose())
 	{
-		if (IsKeyPressed(KEY_R) && !game.running()) game = Game(boardW, boardH, k_snakeColor);
-		game.input();
-
-		counter = (counter + 1) % delay;
-		if (counter == 0 && game.running())
-		{
-			game.tick();
-			game.sound(pickup, gameOver);
-		}
+		screen->tick();
 
 		BeginDrawing();
 		ClearBackground(BLACK);
 
-		game.draw();
+		screen->draw();
+
+		screen->ui();
 
 		EndDrawing();
+
+		screen->sound();
+
+		if (screen->shouldChangeScreen())
+		{
+			screen = factory[screen->requestedScreen()]();
+		}
 	}
 
-	UnloadSound(pickup);
-	UnloadSound(gameOver);
+	UnloadSound(Global::pickup);
+	UnloadSound(Global::gameOver);
 	CloseAudioDevice();
 	CloseWindow();
 }
