@@ -19,8 +19,8 @@ int main()
 
 	constexpr Color k_snakeColor = PURPLE;
 
-	Sound pickup = LoadSound("fruit_pickup.wav");
-	Sound gameOver = LoadSound("game_over.wav");
+	Sound pickup = LoadSound("resources/fruit_pickup.wav");
+	Sound gameOver = LoadSound("resources/game_over.wav");
 	Round round(boardW, boardH, k_snakeColor);
 
 	RenderTexture boardRender = LoadRenderTexture(width * 0.8, height * 0.8);

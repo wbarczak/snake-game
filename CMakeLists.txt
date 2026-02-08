@@ -16,3 +16,5 @@ target_link_libraries(${PROJECT_NAME} raylib)
 target_include_directories(${PROJECT_NAME} SYSTEM PRIVATE
 	external/raylib/src
 )
+
+file(COPY ${CMAKE_SOURCE_DIR}/resources/ DESTINATION ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/resources)
