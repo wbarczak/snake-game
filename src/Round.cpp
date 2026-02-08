@@ -1,12 +1,12 @@
-#include <string>
-
 #include "raylib.h"
 
-#include "Game.hpp"
+#include "Round.hpp"
 
-void Game::input()
+bool Round::input()
 {
-	if (m_inputs.size() >= 2) return;
+	size_t queueSize = m_inputs.size();
+
+	if (queueSize >= 2) return false;
 
 	bool up = IsKeyPressed(KEY_W) || IsKeyPressed(KEY_UP);
 	bool down = IsKeyPressed(KEY_S) || IsKeyPressed(KEY_DOWN);
@@ -29,9 +29,11 @@ void Game::input()
 	{
 		m_inputs.push_back(Direction::right);
 	}
+
+	return queueSize < m_inputs.size();
 }
 
-void Game::tick()
+void Round::tick()
 {
 	if (m_lastMoveResult == MoveResult::fail)
 	{
@@ -78,7 +80,7 @@ void Game::tick()
 	m_body.pop_back();
 }
 
-void Game::sound(Sound pickup, Sound gameOver)
+void Round::sound(Sound pickup, Sound gameOver)
 {
 	switch (m_lastMoveResult)
 	{
@@ -103,21 +105,28 @@ void Game::sound(Sound pickup, Sound gameOver)
 	};
 }
 
-void Game::draw()
+void Round::draw() const
 {
-	const Position tileDim{
-		GetRenderWidth() / m_boardDimensions.x,
-		GetRenderHeight() / m_boardDimensions.y
+	const Vector2 tileDim{
+		GetRenderWidth() / (float)m_boardDimensions.x,
+		GetRenderHeight() / (float)m_boardDimensions.y
 	};
 
 	Color partColor = m_snakeColor;
 	for (auto [x, y] : m_body)
 	{
-		DrawRectangle(
+		const Rectangle partRectangle
+		{
 			x * tileDim.x,
 			y * tileDim.y,
 			tileDim.x,
 			tileDim.y,
+		};
+
+		DrawRectanglePro(
+			partRectangle,
+			{},
+			{},
 			partColor
 		);
 		partColor.a -= 2;
@@ -125,32 +134,24 @@ void Game::draw()
 
 	if (m_fruit.exists)
 	{
-		DrawRectangle(
+		const Rectangle fruitRectangle
+		{
 			m_fruit.pos.x * tileDim.x,
 			m_fruit.pos.y * tileDim.y,
 			tileDim.x,
 			tileDim.y,
+		};
+
+		DrawRectanglePro(
+			fruitRectangle,
+			{},
+			{},
 			RED
-		);
-	}
-
-	DrawText(std::to_string(m_body.size() - 3).c_str(), 0, 0, GetRenderWidth() / 20, WHITE);
-
-	if (m_lastMoveResult == MoveResult::no_op)
-	{
-		std::string gameOver = "Game Over!";
-		float fontSize = GetRenderWidth() / 10;
-		DrawText(
-			gameOver.c_str(),
-			GetRenderWidth() / 2 - MeasureText(gameOver.c_str(), fontSize) / 2,
-			GetRenderHeight() / 2 - fontSize,
-			fontSize,
-			WHITE
 		);
 	}
 }
 
-Game::Fruit Game::randomFruit()
+Round::Fruit Round::randomFruit()
 {
 	Position out{};
 	bool good = false;
@@ -183,7 +184,7 @@ Game::Fruit Game::randomFruit()
 	return Fruit{out, true};
 }
 
-Game::Position Game::applyDirection(Position position, Direction direction)
+Round::Position Round::applyDirection(Position position, Direction direction)
 {
 	switch (direction)
 	{
@@ -199,7 +200,7 @@ Game::Position Game::applyDirection(Position position, Direction direction)
 	return position;
 }
 
-bool Game::previousInputIsOpposite(Direction direction)
+bool Round::previousInputIsOpposite(Direction direction)
 {
 	Direction previousInput = m_inputs.empty()? m_currentDirection : m_inputs.back();
 	

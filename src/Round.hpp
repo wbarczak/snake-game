@@ -4,29 +4,31 @@
 #include <list>
 #include <deque>
 
-class Game
+class Round
 {
 public:
 
 	static constexpr int32_t baseWidthHeight = 10;
 
-	Game(int32_t width = baseWidthHeight, int32_t height = baseWidthHeight, Color snakeColor = GREEN) :
+	Round(int32_t width = baseWidthHeight, int32_t height = baseWidthHeight, Color snakeColor = GREEN) :
 		m_boardDimensions{width, height},
 		m_snakeColor(snakeColor)
 	{
 		m_fruit = randomFruit();
 	}
 
-	~Game()
+	~Round()
 	{
 	}
 
-	bool running() { return m_lastMoveResult != MoveResult::no_op; }
+	bool running() const { return m_lastMoveResult != MoveResult::no_op; }
+	bool won() const { return m_body.size() >= m_boardDimensions.x * m_boardDimensions.y; }
+	int32_t score() const { return m_body.size() - 3; }
 	
-	void input();
+	bool input();
 	void tick();
 	void sound(Sound pickup, Sound gameOver);
-	void draw();
+	void draw() const;
 
 private:
 
